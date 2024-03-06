@@ -66,9 +66,9 @@
 
     - 优化前：开启5000个线程循环10次，2628.5qps
 
-      ![image-20240305162127404](C:\Users\OO\AppData\Roaming\Typora\typora-user-images\image-20240305162127404.png)
+      ![image-20240305162127404](img/before.png)
 
     - 优化后：5928qps
 
-      ![image-20240305162229279](C:\Users\OO\AppData\Roaming\Typora\typora-user-images\image-20240305162229279.png)
+      ![image-20240305162229279](img/after.png)
 
