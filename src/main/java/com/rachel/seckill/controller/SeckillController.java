@@ -1,13 +1,12 @@
 package com.rachel.seckill.controller;
 
+import com.google.common.util.concurrent.RateLimiter;
+import com.rachel.seckill.access.AccessLimit;
 import com.rachel.seckill.domain.SeckillOrder;
 import com.rachel.seckill.domain.SeckillUser;
 import com.rachel.seckill.rabbitmq.MQSender;
 import com.rachel.seckill.rabbitmq.SeckillMessage;
-import com.rachel.seckill.redis.GoodsKey;
-import com.rachel.seckill.redis.OrderKey;
-import com.rachel.seckill.redis.RedisService;
-import com.rachel.seckill.redis.SeckillGoodsKey;
+import com.rachel.seckill.redis.*;
 import com.rachel.seckill.result.CodeMsg;
 import com.rachel.seckill.result.Result;
 import com.rachel.seckill.service.GoodsService;
@@ -21,12 +20,14 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.imageio.ImageIO;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Controller
 @RequestMapping("/seckill")
@@ -46,6 +47,9 @@ public class SeckillController implements InitializingBean {
 
     @Autowired
     MQSender sender;
+
+    //基于令牌桶算法的限流实现类
+    RateLimiter rateLimiter = RateLimiter.create(1);
 
     private Map<Long, Boolean> localOverMap = new HashMap<Long, Boolean>();
 
@@ -72,9 +76,13 @@ public class SeckillController implements InitializingBean {
      * @param goodsId
      * @return
      */
+//    @AccessLimit(seconds = 5, maxCount = 10, needLogin = true)
     @RequestMapping(value = "/{path}/do_seckill", method = RequestMethod.POST)
     @ResponseBody
     public Result<Integer> seckill(SeckillUser seckillUser, Model model, @RequestParam("goodsId") long goodsId, @PathVariable("path") String path) {
+        if (!rateLimiter.tryAcquire(1, TimeUnit.MILLISECONDS)) {
+            return  Result.error(CodeMsg.ACCESS_LIMIT_REACHED);
+        }
         if (seckillUser == null) {
             return Result.error(CodeMsg.SESSION_ERROR);
         }
@@ -120,11 +128,29 @@ public class SeckillController implements InitializingBean {
 //        return Result.success(orderInfo);
     }
 
-    @RequestMapping(value = "/path/{goodsId}", method = RequestMethod.GET)
+//    @AccessLimit(seconds = 5, maxCount = 5, needLogin = true)
+    @RequestMapping(value = "/path", method = RequestMethod.POST)
     @ResponseBody
-    public Result<String> getSeckillPath(SeckillUser seckillUser, Model model, @PathVariable("goodsId") long goodsId) {
+    public Result<String> getSeckillPath(HttpServletRequest request, SeckillUser seckillUser, @RequestParam("goodsId") long goodsId, @RequestParam(value = "verifyCode", defaultValue = "0") int verifyCode) {
+        if (!rateLimiter.tryAcquire(1, TimeUnit.MILLISECONDS)) {
+            return  Result.error(CodeMsg.ACCESS_LIMIT_REACHED);
+        }
         if (seckillUser == null) {
             return Result.error(CodeMsg.SESSION_ERROR);
+        }
+//        String uri = request.getRequestURI();
+//        String key = uri + "_" + seckillUser.getId();
+//        Integer count = redisService.get(AccessKey.access, key, Integer.class);
+//        if (count == null) {
+//            redisService.set(AccessKey.access, key, 1);
+//        } else if (count < 5) {
+//            redisService.incr(AccessKey.access, key);
+//        } else {
+//            return Result.error(CodeMsg.REQUEST_LIMIT_REACHED);
+//        }
+        boolean check = seckillService.checkVerifyCode(seckillUser, goodsId, verifyCode);
+        if (!check) {
+            return Result.error(CodeMsg.REQUEST_ILLEGAL);
         }
         String path = seckillService.createSeckillPath(seckillUser, goodsId);
         return Result.success(path);

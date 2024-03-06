@@ -132,12 +132,15 @@ function doseckill(path){
 
 function getSeckillPath() {
     var goodsId = $("#goodsId").val();
-    layer.msg(goodsId);
     g_showLoading();
 
     $.ajax({
-        url:"/seckill/path/"+goodsId,
-        type:"GET",
+        url:"/seckill/path",
+        type:"POST",
+        data:{
+            goodsId:$("#goodsId").val(),
+            verifyCode:$("#verifyCode").val(),
+        },
         success:function(data){
             if(data.code == 0){
                 var path = data.data;
@@ -179,7 +182,7 @@ $(function(){
 function getDetail(){
 	var goodsId = g_getQueryString("goodsId");
 	$.ajax({
-		url:"/goods/detail/"+goodsId,
+		url:"/goods/detail/" + goodsId,
 		type:"GET",
 		success:function(data){
 			if(data.code == 0){

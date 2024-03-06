@@ -1,5 +1,6 @@
 package com.rachel.seckill.config;
 
+import com.rachel.seckill.access.UserContext;
 import com.rachel.seckill.domain.SeckillUser;
 import com.rachel.seckill.service.SeckillUserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,29 +30,7 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public Object resolveArgument(MethodParameter methodParameter, ModelAndViewContainer modelAndViewContainer, NativeWebRequest nativeWebRequest, WebDataBinderFactory webDataBinderFactory) throws Exception {
-        HttpServletRequest request = nativeWebRequest.getNativeRequest(HttpServletRequest.class);
-        HttpServletResponse response = nativeWebRequest.getNativeResponse(HttpServletResponse.class);
-
-        String paramToken = request.getParameter(SeckillUserService.COOKIE_NAME_TOKEN);
-        String cookieToken = getCookieValue(request, SeckillUserService.COOKIE_NAME_TOKEN);
-
-        if (StringUtils.isEmpty(cookieToken) && StringUtils.isEmpty(paramToken)) {
-            return null;
-        }
-        String token = StringUtils.isEmpty(paramToken) ? cookieToken : paramToken;
-        return seckillUserService.getByToken(response, token);
+        return UserContext.getUser();
     }
 
-    private String getCookieValue(HttpServletRequest request, String cookieNameToken) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
-        }
-        for (Cookie cookie: cookies) {
-            if (cookie.getName().equals(cookieNameToken)) {
-                return cookie.getValue();
-            }
-        }
-        return null;
-    }
 }

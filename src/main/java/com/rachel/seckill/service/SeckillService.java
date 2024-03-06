@@ -63,9 +63,21 @@ public class SeckillService {
         g.dispose();
         //把验证码存到redis中
         int rnd = calc(verifyCode);
-        redisService.set(SeckillGoodsKey.getSeckillVerifyCode, seckillUser.getId()+","+goodsId, rnd);
+        redisService.set(SeckillGoodsKey.getSeckillVerifyCode, seckillUser.getId()+"_"+goodsId, rnd);
         //输出图片
         return image;
+    }
+
+    public boolean checkVerifyCode(SeckillUser seckillUser, long goodsId, int verifyCode) {
+        if(seckillUser == null || goodsId <=0) {
+            return false;
+        }
+        Integer value = redisService.get(SeckillGoodsKey.getSeckillVerifyCode, seckillUser.getId() + "_" + goodsId, Integer.class);
+        if (value == null || value - verifyCode != 0) {
+            return false;
+        }
+        redisService.delete(SeckillGoodsKey.getSeckillVerifyCode, seckillUser.getId() + "_" + goodsId);
+        return true;
     }
 
     private int calc(String exp) {
@@ -145,4 +157,6 @@ public class SeckillService {
         String val = redisService.get(SeckillGoodsKey.getSeckillPath, "" + seckillUser.getId() + "_" + goodsId, String.class);
         return val.equals(path);
     }
+
+
 }
